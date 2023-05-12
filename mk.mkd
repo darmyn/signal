@@ -1,0 +1,130 @@
+# Introduction
+
+This program is directed to those who have a good understanding of Object Oriented Programming, as well as tables and metatables.
+
+Object oriented framework centered around building your class to take full advantage of luau autocomplete and many more features
+
+Feel welcomed to write your questions and concerns in the comments.
+
+I spoke about this before in another post, and since then I have further refined the framework of how I like to implement object oriented programming into Roblox.
+
+This framework will be comprised of several components of coding architecture choices that can be implemented individually into your workflow. I will be slowly going over the boilerplate code and explaining each line and why it's involvement in the design choice of your classes.
+
+This is a framework that also includes a library of useful modules that I use when working within a class. I build all of my projects in the way that I am about to show you, so if you are someone looking for a structure to follow when designing experiences, maybe this post could help shed light on a paradigm that I believe is worthwhile.
+
+Here are some code snippets you may want to install if you plan on incorporating this framework into your workflow:
+
+
+VSCode JSON code snippets: https://90:90/
+Roblox Studio code snippets: https://90:90/
+
+
+I recommend anyone interested in this framework to use VSCode with the Roblox LSP extension. Roblox LSP is slightly different from Roblox Studio’s built-in type checker. At time of writing this I have not discerned whether it runs on the built in type checker. I look to examine this at a later date
+
+Now, let's take a look at a basic class structure with this paradigm. Later we will get into more advanced structures as well as implement some of the libraries in real-world examples.
+
+Oh and for the sake of the tutorial, the example theme will be that of a stopwatch created using object oriented programming.
+
+# Basic setup
+
+```lua
+local stopwatch = {}
+stopwatch.interface = {}
+stopwatch.schema = stopwatch
+stopwatch.metatable = {__index = stopwatch.schema}
+```
+What is `interface`?
+It is the public component of your class.
+	- it will be seen by you when referencing the class
+	- it will be seen by those using your class, too
+	- it contains data you want made public at the `class` level
+	- it contains the `.new()` instantiator
+	- it is the external representation of your class on the developer level. You and other devs using your object will only see what you explicitly permit them too in the interface, leaving the reset locked in another thread of memory that can’t be accessed, but is still able to be accessed internally. 
+- this distinction also helps with a clean construction of the type that will be used to represent the internal representation of an instantiated object (used in methods)
+
+      Examples:
+
+	- Your interface could also contain a `.get()` function, which will access your own defined  table containing active instantiations of the class. This would be useful if you wanted classes to be able to access each other in memory.
+
+
+
+What is `schema`?
+It is the description of methods for your class
+It contains (at least for reasons that I can only foresee) your methods of the class.
+This distinction also helps with a clean construction of the type that will be used to represent the internal representation of an instantiated object (used in methods)
+
+What is `metatable`?
+
+
+In the normal OOP paradigm, we have to set the __index of the class
+In this paradigm, the metatable is separated from the class
+This distinction allows you to hide `__index` and other methods of the class, which is not possible in the common paradigm.
+
+
+
+# The constructor
+
+```lua
+local stopwatch = {}
+stopwatch.interface = {}
+stopwatch.schema = stopwatch
+stopwatch.metatable = {__index = stopwatch.schema}
+
+function stopwatch.new(self)
+	self.elapsedTime = 0
+	return self → returning self allows us to use this function to instantiate a type representing the properties of this class.
+end
+```
+
+The class is composed of 4 components.
+interface
+schema
+metatable
+new (or better known as the “constructor”)
+
+
+These components are visible in other popular languages that have class implementations, but in Roblox we normally mash all of these components into 1 table. Some might argue this is slightly better for memory, but I believe the distinctions between the components of your class, as well as the improved access to types when working within your class and cleaner representation of your class to the outside user.
+
+the constructor is purposed for simply describing the properties of your objects. Due to the fact that it accepts `self` as an argument, we can use the function to construct a type representing the properties of the object, and also allow for property injections from the `initializer` portion of your code, which will be shown later. .new() is for property definitions and setting default values, and the `initializer`, which is talked about later, will handle any calculations, method calls, etc. that occur during the initialization process of a new object.
+
+# Methods
+
+```lua
+local stopwatch = {}
+stopwatch.interface = {}
+stopwatch.schema = stopwatch
+stopwatch.metatable = {__index = stopwatch.schema}
+
+function stopwatch.new(self)
+	self.elapsedTime = 0
+    self.stopped = false
+	return self → returning self allows us to use this function to instantiate a type representing the properties of this class.
+End
+
+function stopwatch.schema.start(self: stopwatch)
+    --[[ Why are methods written this way?
+
+        Because, by using the `.` operatior, it allows us to manually define `self` as an argument, which lets us assign `stopwatch` to the value as a type. This allows for autocomplete when referencing `.self` when working within the method.
+
+    ]]
+	self.stopped = false
+	while not self.stopped do
+	    self.elapsedTime = task.wait()
+	end
+end
+
+function stopwatch.schema.stop(self: stopwatch)
+    self.stopped = false
+end
+
+function stopwatch.schema.restart(self: stopwatch)
+    self.elapsedTime = 0
+    self:start()
+end
+
+-- this is the internal representation of the object that is initialized from the constructor. It contains methods and properties of objects of this class.
+-- it is used in method declaration to give autocompelte when working in that scope which is not possible with the common paradigm
+type stopwatch = typeof(stopwatch.interface.new(...)) & typeof(stopwatch.schema)
+
+return stopwatch
+```
