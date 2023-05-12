@@ -7,8 +7,8 @@ function connection.interface.new(
 	callback: callback, 
 	maxCalls: number
 )
-    local self = setmetatable({}, connection.meta)
-    self.calls = 0 -- number of times the connection was fired
+	local self = setmetatable({}, connection.meta)
+	self.calls = 0 -- number of times the connection was fired
 	self.maxCalls = maxCalls or 0 -- the max number of times the connection can be fired (0 = infinity)
 	self.callback = callback
 	self.alive = true -- can the connection be fired?
@@ -17,8 +17,8 @@ end
 
 function connection.behavior.fire(self: connection, ...)
 	if self.alive then
-		self.calls += 1
 		self.callback(...)
+		self.calls += 1
 		if self.calls >= self.maxCalls and self.maxCalls ~= 0 then
 			self:destroy()
 		end
@@ -38,9 +38,9 @@ signal.behavior = {} --> methods of class
 signal.meta = {__index = signal.behavior} --> object metatable
 
 function signal.interface.new() --> creates a new signal
-    local self = setmetatable({}, signal.meta)
-    self._connections = {}
-    return self
+	local self = setmetatable({}, signal.meta)
+	self._connections = {}
+	return self
 end
 
 function signal.interface.wrap(scriptSignal: RBXScriptSignal) --> creates a new signal and connects it to an existing RBXScriptConnection
@@ -65,16 +65,17 @@ function signal.behavior.connectMethod(self: signal, obj, method, itterations: n
 	end, itterations)
 end
 
-function signal.behavior.wait(self: signal, itterations: number, timeout: number)
+function signal.behavior.wait(self: signal, itterations: number?, timeout: number?)
+	itterations = itterations or 1
 	timeout = timeout or 10
 	local results = {}
 	local connection = self:connect(function(...)
 		return table.insert(results, table.pack(...))
 	end, itterations)
 	local beganWaitingAt = os.clock()
-	while connection.calls ~= itterations do
+	while #results < itterations do
 		if os.clock() - beganWaitingAt >= timeout then
-			warn("Signal timeout of "..timeout.." seconds was exceded.")
+			warn("Signal timeout of "..tostring(timeout).." seconds was exceded.")
 			break
 		end
 		task.wait()
@@ -91,11 +92,15 @@ end
 
 function signal.behavior.fire(self: signal, ...)
 	local connections = self._connections
-	for i, connection: connection in pairs(connections) do
+	local remove = {}
+	for i, connection: connection in ipairs(connections) do
 		connection:fire()
 		if not connection.alive then
-			table.remove(connections, i)
+			table.insert(remove, i)
 		end
+	end
+	for _, i in ipairs(remove) do
+		table.remove(connections, i)
 	end
 end
 
@@ -103,28 +108,6 @@ function signal.behavior.destroy(self: signal)
 	self:disconnectAll()
 	setmetatable(self :: any, nil)
 	table.clear(self :: any)
-end
-
-local test = signal.interface.new()
-test:fire()
-print("fired initial test")
-task.spawn(function()
-	local result = test:wait(2)
-	print("2 itterations have passed, here is the result: ", result)
-end)
-test:connect(function()
-	print("Connection 1 fired")
-end)
-test:connect(function()
-	print("Connection 2 fired")
-end, 3)
-task.spawn(function()
-	local result = test:wait(2)
-	print("other wait is fired, here is the result: ", result)
-end)
-
-for i = 1, 3 do
-	test:fire()
 end
 
 type signal = typeof(signal.interface.new(table.unpack(...)))
